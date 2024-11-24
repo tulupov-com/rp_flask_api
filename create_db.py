@@ -1,36 +1,48 @@
 # create_db.py
 
-import sqlite3
+from datetime import datetime
+from config import app, db
+from models import Person, Note
 
-conn = sqlite3.connect("people.db")
-print("Database created and opened successfully")
-
-# создание таблицы с заданными полями
-columns = [
-	"id INTEGER PRIMARY KEY",
-	"lname VARCHAR UNIQUE",
-	"fname VARCHAR",
-	"timestamp DATETIME",
- ]
-create_table_cmd = f"CREATE TABLE person ({','.join(columns)})"
-conn.execute(create_table_cmd)
-print("Table created successfully")
-
-# записываемые в базу данных персонажи
-people = [
-	"1, 'Fairy', 'Tooth', '2022-10-08 09:15:10'",
-	"2, 'Ruprecht', 'Knecht', '2022-10-08 09:15:13'",
-	"3, 'Bunny', 'Easter', '2022-10-08 09:15:27'",
+PEOPLE_NOTES = [
+    {
+        "lname": "Fairy",
+        "fname": "Tooth",
+        "notes": [
+            ("I brush my teeth after each meal.", "2022-01-06 17:10:24"),
+            ("The other day a friend said, I have big teeth.", "2022-03-05 22:17:54"),
+            ("Do you pay per gram?", "2022-03-05 22:18:10"),
+        ],
+    },
+    {
+        "lname": "Ruprecht",
+        "fname": "Knecht",
+        "notes": [
+            ("I swear, I'll do better this year.", "2022-01-01 09:15:03"),
+            ("Really! Only good deeds from now on!", "2022-02-06 13:09:21"),
+        ],
+    },
+    {
+        "lname": "Bunny",
+        "fname": "Easter",
+        "notes": [
+            ("Please keep the current inflation rate in mind!", "2022-01-07 22:47:54"),
+            ("No need to hide the eggs this time.", "2022-04-06 13:03:17"),
+        ],
+    },
 ]
-for person in people:
-	insert_cmd = f"INSERT INTO person VALUES ({person})"
-	conn.execute(insert_cmd)
-conn.commit()
-print("Records created successfully")
 
-# проверка: вывод данных из таблицы базы данных
-cur = conn.cursor()
-cur.execute("SELECT * FROM person")
-people = cur.fetchall()
-for person in people:
-	print(person)
+with app.app_context():
+    db.drop_all()
+    db.create_all()
+    for data in PEOPLE_NOTES:
+        new_person = Person(lname=data.get("lname"), fname=data.get("fname"))
+        for content, timestamp in data.get("notes", []):
+            new_person.notes.append(
+                Note(
+                    content=content,
+                    timestamp=datetime.strptime(timestamp, "%Y-%m-%d %H:%M:%S"),
+                )
+            )
+        db.session.add(new_person)
+    db.session.commit()
